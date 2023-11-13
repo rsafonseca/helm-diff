@@ -39,6 +39,7 @@ type diffCmd struct {
 	disableOpenAPIValidation bool
 	dryRun                   bool
 	namespace                string // namespace to assume the release to be installed into. Defaults to the current kube config namespace.
+	storageNamespace         string // namespace where helm settings are stored, when different from the namespace where the release will be installed
 	valueFiles               valueFiles
 	values                   []string
 	stringValues             []string
@@ -80,7 +81,11 @@ var yamlSeperator = []byte("\n---\n")
 
 func newChartCommand() *cobra.Command {
 	diff := diffCmd{
-		namespace: os.Getenv("HELM_NAMESPACE"),
+		namespace:        os.Getenv("HELM_NAMESPACE"),
+		storageNamespace: os.Getenv("HELM_STORAGE_NAMESPACE"),
+	}
+	if len(diff.storageNamespace) == 0 {
+		diff.storageNamespace = diff.namespace
 	}
 
 	cmd := &cobra.Command{
@@ -239,7 +244,7 @@ func (d *diffCmd) runHelm3() error {
 
 	if d.threeWayMerge {
 		actionConfig := new(action.Configuration)
-		if err := actionConfig.Init(envSettings.RESTClientGetter(), envSettings.Namespace(), os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
+		if err := actionConfig.Init(envSettings.RESTClientGetter(), d.storageNamespace, os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
 			log.Fatalf("%+v", err)
 		}
 		if err := actionConfig.KubeClient.IsReachable(); err != nil {
