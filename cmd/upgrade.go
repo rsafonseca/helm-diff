@@ -219,7 +219,7 @@ func (d *diffCmd) runHelm3() error {
 	var err error
 
 	if !d.dryRun {
-		releaseManifest, err = getRelease(d.release, d.namespace)
+		releaseManifest, err = getRelease(d.release, d.storageNamespace)
 	}
 
 	var newInstall bool
