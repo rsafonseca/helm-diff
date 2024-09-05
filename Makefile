@@ -3,7 +3,7 @@ VERSION := $(shell sed -n -e 's/version:[ "]*\([^"]*\).*/\1/p' plugin.yaml)
 
 HELM_3_PLUGINS := $(shell helm env HELM_PLUGINS)
 
-PKG:= github.com/databus23/helm-diff/v3
+PKG:= github.com/rsafonseca/helm-diff/v3
 LDFLAGS := -X $(PKG)/cmd.Version=$(VERSION)
 
 GO ?= go
@@ -48,7 +48,7 @@ bootstrap:
 	command -v golint || GO111MODULE=off go get -u golang.org/x/lint/golint
 
 .PHONY: docker-run-release
-docker-run-release: export pkg=/go/src/github.com/databus23/helm-diff
+docker-run-release: export pkg=/go/src/github.com/rsafonseca/helm-diff
 docker-run-release:
 	git checkout master
 	git push
