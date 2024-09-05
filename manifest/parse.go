@@ -11,16 +11,18 @@ import (
 )
 
 const (
-	hookAnnotation = "helm.sh/hook"
+	hookAnnotation           = "helm.sh/hook"
+	resourcePolicyAnnotation = "helm.sh/resource-policy"
 )
 
 var yamlSeparator = []byte("\n---\n")
 
 // MappingResult to store result of diff
 type MappingResult struct {
-	Name    string
-	Kind    string
-	Content string
+	Name           string
+	Kind           string
+	Content        string
+	ResourcePolicy string
 }
 
 type metadata struct {
@@ -113,7 +115,7 @@ func parseContent(content string, defaultNamespace string, normalizeManifests bo
 		return nil, nil
 	}
 
-	if parsedMetadata.Kind == "List" {
+	if strings.HasSuffix(parsedMetadata.Kind, "List") {
 		type ListV1 struct {
 			Items []yaml.MapSlice `yaml:"items"`
 		}
@@ -134,7 +136,7 @@ func parseContent(content string, defaultNamespace string, normalizeManifests bo
 
 			subs, err := parseContent(string(subcontent), defaultNamespace, normalizeManifests, excludedHooks...)
 			if err != nil {
-				return nil, fmt.Errorf("Parsing YAML list item: %v", err)
+				return nil, fmt.Errorf("Parsing YAML list item: %w", err)
 			}
 
 			result = append(result, subs...)
@@ -169,9 +171,10 @@ func parseContent(content string, defaultNamespace string, normalizeManifests bo
 	name := parsedMetadata.String()
 	return []*MappingResult{
 		{
-			Name:    name,
-			Kind:    parsedMetadata.Kind,
-			Content: content,
+			Name:           name,
+			Kind:           parsedMetadata.Kind,
+			Content:        content,
+			ResourcePolicy: parsedMetadata.Metadata.Annotations[resourcePolicyAnnotation],
 		},
 	}, nil
 }

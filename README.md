@@ -30,21 +30,15 @@ curl -L $TARBALL_URL | tar -C $(helm home)/plugins -xzv
 
 ### From Source
 #### Prerequisites
- - GoLang `>= 1.17`
+ - GoLang `>= 1.21`
 
 Make sure you do not have a version of `helm-diff` installed. You can remove it by running `helm plugin uninstall diff`
 
 #### Installation Steps
 The first step is to download the repository and enter the directory. You can do this via `git clone` or downloading and extracting the release. If you clone via git, remember to checkout the latest tag for the latest release.
 
-Next, depending on which helm version you have, install the plugin into helm.
+Next, install the plugin into helm.
 
-##### Helm 2
-```bash
-make install
-```
-
-##### Helm 3
 ```bash
 make install/helm3
 ```
@@ -58,17 +52,17 @@ The Helm Diff Plugin
 * Shows a diff explaining what a helm upgrade would change:
     This fetches the currently deployed version of a release
   and compares it to a local chart plus values. This can be 
-  used visualize what changes a helm upgrade will perform.
+  used to visualize what changes a helm upgrade will perform.
 
-* Shows a diff explaining what had changed between two revisions:
+* Shows a diff explaining what had changed between the two revisions:
     This fetches previously deployed versions of a release
-  and compares them. This can be used visualize what changes 
+  and compares them. This can be used to visualize what changes 
   were made during revision change.
 
 * Shows a diff explaining what a helm rollback would change:
     This fetches the currently deployed version of a release
-  and compares it to the previously deployed version of the release, that you 
-  want to rollback. This can be used visualize what changes a 
+  and compares it to the previously deployed version of the release that you 
+  want to rollback. This can be used to visualize what changes a 
   helm rollback will perform.
 
 Usage:
@@ -93,6 +87,7 @@ Flags:
       --disable-openapi-validation       disables rendered templates validation against the Kubernetes OpenAPI Schema
       --disable-validation               disables rendered templates validation against the Kubernetes cluster you are currently pointing to. This is the same validation performed on an install
       --dry-run                          disables cluster access and show diff as if it was install. Implies --install, --reset-values, and --disable-validation
+      --enable-dns                       enable DNS lookups when rendering templates 
   -D, --find-renames float32             Enable rename detection if set to any value greater than 0. If specified, the value denotes the maximum fraction of changed content as lines added + removed compared to total lines in a diff for considering it a rename. Only objects of the same Kind are attempted to be matched
   -h, --help                             help for diff
       --include-tests                    enable the diffing of the helm test hooks
@@ -102,7 +97,7 @@ Flags:
       --no-color                         remove colors from the output. If both --no-color and --color are unspecified, coloring enabled only when the stdout is a term and TERM is not "dumb"
       --no-hooks                         disable diffing of hooks
       --normalize-manifests              normalize manifests before running diff to exclude style differences from the output
-      --output string                    Possible values: diff, simple, template. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
+      --output string                    Possible values: diff, simple, template, dyff. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
       --post-renderer string             the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path
       --post-renderer-args stringArray   an argument to the post-renderer (can specify multiple)
       --repo string                      specify the chart repository url to locate the requested chart
@@ -113,7 +108,7 @@ Flags:
       --set-string stringArray           set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
       --show-secrets                     do not redact secret values in the output
       --strip-trailing-cr                strip trailing carriage return on input
-      --suppress stringArray             allows suppression of the values listed in the diff output
+      --suppress stringArray             allows suppression of the kinds listed in the diff output (can specify multiple, like '--suppress Deployment --suppress Service')
   -q, --suppress-secrets                 suppress secrets in the output
       --three-way-merge                  use three-way-merge to compute patch and generate diff output
   -f, --values valueFiles                specify values in a YAML file (can specify multiple) (default [])
@@ -135,7 +130,7 @@ Show a diff explaining what a helm upgrade would change.
 
 This fetches the currently deployed version of a release
 and compares it to a chart plus values.
-This can be used visualize what changes a helm upgrade will
+This can be used to visualize what changes a helm upgrade will
 perform.
 
 Usage:
@@ -148,6 +143,14 @@ Examples:
   # It's useful when you're using `helm-diff` in a `helm upgrade` wrapper.
   # See https://github.com/databus23/helm-diff/issues/278 for more information.
   HELM_DIFF_IGNORE_UNKNOWN_FLAGS=true helm diff upgrade my-release stable/postgres --wait
+
+  # helm-diff disallows the use of the `lookup` function by default.
+  # To enable it, you must set HELM_DIFF_USE_INSECURE_SERVER_SIDE_DRY_RUN=true to
+  # use `helm template --dry-run=server` or
+  # `helm upgrade --dry-run=server` (in case you also set `HELM_DIFF_USE_UPGRADE_DRY_RUN`)
+  # See https://github.com/databus23/helm-diff/pull/458
+  # for more information.
+  HELM_DIFF_USE_INSECURE_SERVER_SIDE_DRY_RUN=true helm diff upgrade my-release datadog/datadog
 
   # Set HELM_DIFF_USE_UPGRADE_DRY_RUN=true to
   # use `helm upgrade --dry-run` instead of `helm template` to render manifests from the chart.
@@ -180,6 +183,7 @@ Flags:
       --disable-openapi-validation       disables rendered templates validation against the Kubernetes OpenAPI Schema
       --disable-validation               disables rendered templates validation against the Kubernetes cluster you are currently pointing to. This is the same validation performed on an install
       --dry-run                          disables cluster access and show diff as if it was install. Implies --install, --reset-values, and --disable-validation
+      --enable-dns                       enable DNS lookups when rendering templates 
   -D, --find-renames float32             Enable rename detection if set to any value greater than 0. If specified, the value denotes the maximum fraction of changed content as lines added + removed compared to total lines in a diff for considering it a rename. Only objects of the same Kind are attempted to be matched
   -h, --help                             help for upgrade
       --include-tests                    enable the diffing of the helm test hooks
@@ -188,7 +192,7 @@ Flags:
       --kubeconfig string                This flag is ignored, to allow passing of this top level flag to helm
       --no-hooks                         disable diffing of hooks
       --normalize-manifests              normalize manifests before running diff to exclude style differences from the output
-      --output string                    Possible values: diff, simple, template. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
+      --output string                    Possible values: diff, simple, template, dyff. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
       --post-renderer string             the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path
       --post-renderer-args stringArray   an argument to the post-renderer (can specify multiple)
       --repo string                      specify the chart repository url to locate the requested chart
@@ -234,7 +238,7 @@ Flags:
   -h, --help                   help for release
       --include-tests          enable the diffing of the helm test hooks
       --normalize-manifests    normalize manifests before running diff to exclude style differences from the output
-      --output string          Possible values: diff, simple, template. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
+      --output string          Possible values: diff, simple, template, dyff. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
       --show-secrets           do not redact secret values in the output
       --strip-trailing-cr      strip trailing carriage return on input
       --suppress stringArray   allows suppression of the values listed in the diff output
@@ -274,7 +278,7 @@ Flags:
   -h, --help                   help for revision
       --include-tests          enable the diffing of the helm test hooks
       --normalize-manifests    normalize manifests before running diff to exclude style differences from the output
-      --output string          Possible values: diff, simple, template. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
+      --output string          Possible values: diff, simple, template, dyff. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
       --show-secrets           do not redact secret values in the output
       --strip-trailing-cr      strip trailing carriage return on input
       --suppress stringArray   allows suppression of the values listed in the diff output
@@ -308,7 +312,7 @@ Flags:
   -h, --help                   help for rollback
       --include-tests          enable the diffing of the helm test hooks
       --normalize-manifests    normalize manifests before running diff to exclude style differences from the output
-      --output string          Possible values: diff, simple, template. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
+      --output string          Possible values: diff, simple, template, dyff. When set to "template", use the env var HELM_DIFF_TPL to specify the template. (default "diff")
       --show-secrets           do not redact secret values in the output
       --strip-trailing-cr      strip trailing carriage return on input
       --suppress stringArray   allows suppression of the values listed in the diff output

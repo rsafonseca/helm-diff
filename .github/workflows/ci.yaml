@@ -1,10 +1,6 @@
 ---
 name: CI
 
-env:
-  VERSION_GO: '1.19.8'
-  VERSION_HELM: 'v3.11.3'
-
 on:
   pull_request:
   push:
@@ -17,17 +13,10 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.VERSION_GO }}
-
-      - uses: actions/cache@v2
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version-file: 'go.mod'
 
       - name: Install dependencies
         run: make bootstrap
@@ -54,17 +43,34 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         shell: [ default ]
         experimental: [ false ]
+        helm-version: [ v3.14.4, v3.15.4 ]
         include:
           - os: windows-latest
             shell: wsl
             experimental: false
+            helm-version: v3.14.4
           - os: windows-latest
             shell: cygwin
             experimental: false
+            helm-version: v3.14.4
           - os: ubuntu-latest
             container: alpine
             shell: sh
             experimental: false
+            helm-version: v3.14.4
+          - os: windows-latest
+            shell: wsl
+            experimental: false
+            helm-version: v3.15.4
+          - os: windows-latest
+            shell: cygwin
+            experimental: false
+            helm-version: v3.15.4
+          - os: ubuntu-latest
+            container: alpine
+            shell: sh
+            experimental: false
+            helm-version: v3.15.4
 
     steps:
       - name: Disable autocrlf
@@ -73,20 +79,20 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Setup Helm
-        uses: azure/setup-helm@v1.1
+        uses: azure/setup-helm@v4
         with:
-          version: ${{ env.VERSION_HELM }}
+          version: ${{ matrix.helm-version }}
 
       - name: Setup WSL
         if: "contains(matrix.shell, 'wsl')"
-        uses: Vampire/setup-wsl@v1
+        uses: Vampire/setup-wsl@v3
 
       - name: Setup Cygwin
         if: "contains(matrix.shell, 'cygwin')"
-        uses: egor-tensin/setup-cygwin@v3
+        uses: egor-tensin/setup-cygwin@v4
         with:
           platform: x64
 
@@ -98,17 +104,25 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     needs: [build]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Helm maintains the latest minor version only and therefore each Helmfile version supports 2 Helm minor versions.
+          # That's why we cover only 2 Helm minor versions in this matrix.
+          # See https://github.com/helmfile/helmfile/pull/286#issuecomment-1250161182 for more context.
+          - helm-version: v3.14.4
+          - helm-version: v3.15.4
     steps:
       - uses: engineerd/setup-kind@v0.5.0
         with:
           version: "v0.11.1"
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Setup Helm
-        uses: azure/setup-helm@v1.1
+        uses: azure/setup-helm@v4
         with:
-          version: ${{ env.VERSION_HELM }}
+          version: ${{ matrix.helm-version }}
 
       - name: helm plugin install
         run: helm plugin install .
@@ -124,15 +138,3 @@ jobs:
 
       - name: helm diff upgrade -C 3 --set replicaCount=2 --install helm-diff ./helm-diff
         run: helm diff upgrade -C 3 --set replicaCount=2 --install helm-diff ./helm-diff
-
-  shell-lint:
-    name: Lint install-binary.sh
-    runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[ci skip]')"
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v2.4.0
-      - uses: luizm/action-sh-checker@v0.3.0
-        with:
-          sh_checker_exclude: "scripts"
-          sh_checker_checkbashisms_enable: true
